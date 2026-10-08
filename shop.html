@@ -19,8 +19,8 @@
     <div class="toolbar">
       <div class="chips" id="chips"></div>
       <div class="tools">
-        <input type="search" class="search" id="search" placeholder="Tìm sản phẩm…">
-        <select class="select" id="sort">
+        <input type="search" class="search" id="search" placeholder="Tìm sản phẩm…" aria-label="Tìm sản phẩm">
+        <select class="select" id="sort" aria-label="Sắp xếp">
           <option value="default">Mặc định</option>
           <option value="price-asc">Giá tăng dần</option>
           <option value="price-desc">Giá giảm dần</option>
@@ -43,6 +43,10 @@
         ...COLLECTIONS.map((c) => ({ key: "col:" + c.id, label: c.name })),
       ];
       let active = params.get("col") ? "col:" + params.get("col") : params.get("cat") ? "cat:" + params.get("cat") : "all";
+      if (!filters.some((f) => f.key === active)) active = "all"; // tham số không hợp lệ → hiện tất cả
+
+      // Bỏ dấu tiếng Việt để tìm "ao thun" vẫn ra "Áo thun"
+      const norm = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u0111/gi, "d").toLowerCase();
 
       const chips = document.getElementById("chips");
       const grid = document.getElementById("productGrid");
@@ -52,15 +56,15 @@
       function render() {
         chips.innerHTML = filters.map((f) => `<button class="chip ${f.key === active ? "active" : ""}" data-f="${f.key}">${f.label}</button>`).join("");
         const [type, val] = active.split(":");
-        const q = search.value.trim().toLowerCase();
+        const q = norm(search.value.trim());
         let list = PRODUCTS.filter((p) =>
-          (type === "all" || p[type] === val) && (!q || p.name.toLowerCase().includes(q)));
+          (type === "all" || p[type] === val) && (!q || norm(p.name).includes(q)));
         if (sort.value === "price-asc") list.sort((a, b) => a.price - b.price);
         if (sort.value === "price-desc") list.sort((a, b) => b.price - a.price);
         if (sort.value === "name") list.sort((a, b) => a.name.localeCompare(b.name, "vi"));
 
         const f = filters.find((x) => x.key === active);
-        document.getElementById("pageTitle").textContent = type === "col" ? "BST " + f.label : type === "cat" ? f.label : "Tất cả sản phẩm";
+        document.getElementById("pageTitle").textContent = !f || type === "all" ? "Tất cả sản phẩm" : type === "col" ? "BST " + f.label : f.label;
         document.getElementById("resultCount").textContent = `${list.length} sản phẩm`;
         grid.innerHTML = list.length ? list.map(productCard).join("") : `<p class="empty">Không tìm thấy sản phẩm phù hợp.</p>`;
         initReveal();

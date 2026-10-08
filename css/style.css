@@ -178,7 +178,12 @@ section { padding: 80px 0; position: relative; }
   position: relative; z-index: 1; margin-top: -54px; height: 54px; display: flex; gap: 8px; justify-content: center; align-items: center;
   transform: translateY(10px); opacity: 0; transition: 0.3s; pointer-events: none;
 }
-.product-card:hover .product-actions { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.product-card:hover .product-actions,
+.product-card:focus-within .product-actions { opacity: 1; transform: translateY(0); pointer-events: auto; }
+/* Thiết bị cảm ứng (không có hover): luôn hiện nút */
+@media (hover: none) {
+  .product-actions { opacity: 1; transform: none; pointer-events: auto; }
+}
 .product-info { padding: 14px 4px 0; }
 .product-col { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
 .product-info h3 { font-size: 1rem; color: var(--heading); margin: 2px 0 4px; line-height: 1.35; }
@@ -190,7 +195,7 @@ section { padding: 80px 0; position: relative; }
 
 /* ---------- About ---------- */
 .about-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 60px; align-items: center; }
-.about-text p { color: var(--muted); margin: 18px 0 26px; }
+.about-text > p:not(.eyebrow) { color: var(--muted); margin: 18px 0 26px; }
 .features { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
 .feature { display: flex; gap: 14px; align-items: center; background: var(--surface); padding: 14px; border-radius: 16px; box-shadow: var(--shadow); }
 .feature-icon { flex: none; width: 54px; height: 54px; border-radius: 14px; background: var(--bg); display: grid; place-items: center; font-weight: 800; color: var(--red); font-size: 0.85rem; }
@@ -288,7 +293,14 @@ section { padding: 80px 0; position: relative; }
 .sizes { display: flex; gap: 8px; flex-wrap: wrap; }
 .sizes button { min-width: 48px; height: 44px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; color: var(--heading); }
 .sizes button.active { background: var(--heading); color: #fff; border-color: var(--heading); }
-.pd-info .swatches span { width: 28px; height: 28px; cursor: pointer; }
+.pd-info .swatches button {
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.15);
+  outline: 2px solid transparent; outline-offset: 3px; transition: outline-color 0.2s;
+}
+.pd-info .swatches button:hover { outline-color: var(--line); }
+.pd-info .swatches button.active { outline-color: var(--red); }
+.cart-variant { display: flex; align-items: center; gap: 6px; }
+.cart-variant .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.2); display: inline-block; }
 .pd-buy { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
 .qty { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface); }
 .qty button { width: 34px; height: 34px; font-size: 1.1rem; color: var(--heading); }
@@ -314,7 +326,9 @@ section { padding: 80px 0; position: relative; }
 }
 .upload:hover, .upload.drag { border-color: var(--red); background: var(--bg-soft); }
 .upload strong { color: var(--red); }
-.upload input { display: none; }
+.upload { position: relative; }
+.upload input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.upload:focus-within { border-color: var(--red); background: var(--bg-soft); outline: 2px solid var(--red); outline-offset: 2px; }
 .model-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
 .model-list button, .garment-list button { border-radius: 12px; overflow: hidden; aspect-ratio: 3 / 4; border: 2.5px solid transparent; transition: 0.2s; background: #f3e4d6; }
 .model-list button.active, .garment-list button.active { border-color: var(--red); transform: scale(0.96); }
@@ -323,11 +337,12 @@ section { padding: 80px 0; position: relative; }
 .stage-wrap { position: relative; }
 .stage {
   position: relative; aspect-ratio: 3 / 4; border-radius: var(--radius); overflow: hidden; background: #f3e4d6; box-shadow: var(--shadow-lg);
-  user-select: none; touch-action: none;
+  user-select: none;
 }
 .stage > img.person { width: 100%; height: 100%; object-fit: cover; }
 .stage .placeholder { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 20px; }
 .garment {
+  touch-action: none; /* chỉ chặn cuộn khi kéo trang phục, phần còn lại của ảnh vẫn cuộn trang được */
   position: absolute; left: 50%; top: 45%; width: 46%; cursor: grab; transform: translate(-50%, -50%);
   border-radius: 18px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); outline: 2px dashed transparent; outline-offset: 4px;
 }
@@ -380,13 +395,13 @@ section { padding: 80px 0; position: relative; }
 .footer-bottom a { display: inline !important; text-decoration: underline; }
 
 /* ---------- Drawer / modal / toast ---------- */
-.overlay { position: fixed; inset: 0; background: rgba(45, 21, 18, 0.45); opacity: 0; pointer-events: none; transition: 0.3s; z-index: 80; }
-.overlay.show { opacity: 1; pointer-events: auto; }
+.overlay { position: fixed; inset: 0; background: rgba(45, 21, 18, 0.45); opacity: 0; visibility: hidden; pointer-events: none; transition: 0.3s; z-index: 80; }
+.overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
 .cart-drawer {
   position: fixed; top: 0; right: 0; height: 100%; width: min(400px, 100%); background: var(--bg-soft); z-index: 90;
-  transform: translateX(100%); transition: transform 0.35s ease; display: flex; flex-direction: column;
+  transform: translateX(100%); visibility: hidden; transition: transform 0.35s ease, visibility 0s linear 0.35s; display: flex; flex-direction: column;
 }
-.cart-drawer.open { transform: none; }
+.cart-drawer.open { transform: none; visibility: visible; transition: transform 0.35s ease, visibility 0s; }
 .drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--line); }
 .drawer-head h3 { color: var(--heading); }
 .drawer-body { flex: 1; overflow-y: auto; padding: 10px 20px; }
@@ -400,9 +415,9 @@ section { padding: 80px 0; position: relative; }
 .cart-item strong { font-size: 0.9rem; color: var(--red); }
 .empty-cart { text-align: center; padding: 60px 0; color: var(--muted); display: grid; justify-items: center; gap: 12px; }
 .empty-cart svg { width: 54px; height: 54px; opacity: 0.4; }
-.modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 95; opacity: 0; pointer-events: none; transition: 0.3s; padding: 16px; }
-.modal.open { opacity: 1; pointer-events: auto; }
-.modal-card { background: var(--bg-soft); border-radius: var(--radius); padding: 36px 32px; width: min(420px, 100%); position: relative; box-shadow: var(--shadow-lg); transform: translateY(20px); transition: 0.3s; }
+.modal { position: fixed; inset: 0; display: flex; overflow-y: auto; z-index: 95; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s, visibility 0s linear 0.3s; padding: 16px; }
+.modal.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.3s, visibility 0s; }
+.modal-card { margin: auto; background: var(--bg-soft); border-radius: var(--radius); padding: 36px 32px; width: min(420px, 100%); position: relative; box-shadow: var(--shadow-lg); transform: translateY(20px); transition: transform 0.3s; }
 .modal.open .modal-card { transform: none; }
 .modal-close { position: absolute; top: 14px; right: 14px; }
 .modal-card h3 { color: var(--heading); font-size: 1.5rem; }
@@ -441,9 +456,11 @@ section { padding: 80px 0; position: relative; }
   .menu-toggle { display: grid; }
   .main-nav {
     position: fixed; top: 64px; left: 16px; right: 16px; flex-direction: column; background: var(--bg-soft); border-radius: 18px; padding: 10px;
-    box-shadow: var(--shadow-lg); transform: translateY(-10px); opacity: 0; pointer-events: none; transition: 0.25s;
+    box-shadow: var(--shadow-lg); transform: translateY(-10px); opacity: 0; visibility: hidden; pointer-events: none;
+    transition: transform 0.25s, opacity 0.25s, visibility 0s linear 0.25s;
+    max-height: calc(100vh - 80px); overflow-y: auto;
   }
-  .main-nav.open { transform: none; opacity: 1; pointer-events: auto; }
+  .main-nav.open { transform: none; opacity: 1; visibility: visible; pointer-events: auto; transition: transform 0.25s, opacity 0.25s, visibility 0s; }
   .main-nav a { padding: 12px 16px; font-size: 1rem; }
   .main-nav a::after { display: none; }
   .collection-grid { grid-template-columns: 1fr 1fr; }

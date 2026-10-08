@@ -36,7 +36,7 @@ function renderHeader() {
       <div class="header-actions">
         <button class="btn-pill btn-outline btn-sm" data-open="login">Đăng nhập</button>
         <button class="icon-btn" data-open="cart" aria-label="Giỏ hàng">${ICONS.bag}<span class="cart-count" id="cartCount">0</span></button>
-        <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Menu">${ICONS.menu}</button>
+        <button class="icon-btn menu-toggle" id="menuToggle" aria-label="Menu" aria-controls="mainNav" aria-expanded="false">${ICONS.menu}</button>
       </div>
     </div>`;
   document.body.prepend(header);
@@ -87,7 +87,7 @@ function renderHeader() {
     `
     <div class="overlay" id="overlay"></div>
     <aside class="cart-drawer" id="cartDrawer" aria-label="Giỏ hàng">
-      <div class="drawer-head"><h3>Giỏ hàng</h3><button class="icon-btn" data-close>${ICONS.close}</button></div>
+      <div class="drawer-head"><h3>Giỏ hàng</h3><button class="icon-btn" data-close aria-label="Đóng giỏ hàng">${ICONS.close}</button></div>
       <div class="drawer-body" id="cartItems"></div>
       <div class="drawer-foot">
         <div class="cart-total"><span>Tạm tính</span><strong id="cartTotal">0đ</strong></div>
@@ -96,7 +96,7 @@ function renderHeader() {
     </aside>
     <div class="modal" id="loginModal" role="dialog" aria-label="Đăng nhập">
       <div class="modal-card">
-        <button class="icon-btn modal-close" data-close>${ICONS.close}</button>
+        <button class="icon-btn modal-close" data-close aria-label="Đóng">${ICONS.close}</button>
         <h3>Chào mừng trở lại</h3>
         <p class="muted">Đăng nhập để nhận ưu đãi hội viên</p>
         <form id="loginForm">
@@ -107,7 +107,7 @@ function renderHeader() {
         <p class="muted small center">Chưa có tài khoản? <a href="#">Đăng ký</a></p>
       </div>
     </div>
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="petals" aria-hidden="true"></div>`
   );
 }
@@ -116,20 +116,32 @@ function renderHeader() {
 const Cart = {
   key: "mocduyen_cart",
   get() {
-    try { return JSON.parse(localStorage.getItem(this.key)) || []; } catch { return []; }
+    // Bỏ qua dữ liệu hỏng hoặc sản phẩm không còn tồn tại (giỏ cũ lưu từ bản trước)
+    try {
+      const raw = JSON.parse(localStorage.getItem(this.key));
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .filter((i) => i && findProduct(i.id) && Number(i.qty) > 0)
+        .map((i) => {
+          const p = findProduct(i.id);
+          return { id: p.id, qty: Number(i.qty), size: i.size || "M", color: p.colors.includes(i.color) ? i.color : p.colors[0] };
+        });
+    } catch { return []; }
   },
   save(items) {
     try { localStorage.setItem(this.key, JSON.stringify(items)); } catch {}
     this.render();
   },
-  add(id, qty = 1, size = "M") {
-    const items = this.get();
-    const found = items.find((i) => i.id === id && i.size === size);
-    if (found) found.qty += qty;
-    else items.push({ id, qty, size });
-    this.save(items);
+  add(id, qty = 1, size = "M", color) {
     const p = findProduct(id);
-    toast(`Đã thêm “${p.name}” vào giỏ`);
+    if (!p) return;
+    color = p.colors.includes(color) ? color : p.colors[0];
+    const items = this.get();
+    const found = items.find((i) => i.id === p.id && i.size === size && i.color === color);
+    if (found) found.qty += qty;
+    else items.push({ id: p.id, qty, size, color });
+    this.save(items);
+    toast(`Đã thêm “${p.name}” (size ${size}) vào giỏ`);
   },
   update(index, delta) {
     const items = this.get();
@@ -154,8 +166,8 @@ const Cart = {
             <img src="${IMG(p.img, 160, 200)}" alt="${p.name}">
             <div>
               <a href="product.html?id=${p.id}" class="cart-name">${p.name}</a>
-              <p class="muted small">Size: ${i.size}</p>
-              <div class="qty"><button data-q="${idx}" data-d="-1">−</button><span>${i.qty}</span><button data-q="${idx}" data-d="1">+</button></div>
+              <p class="muted small cart-variant">Size: ${i.size} · Màu <span class="dot" style="background:${i.color}"></span></p>
+              <div class="qty"><button data-q="${idx}" data-d="-1" aria-label="Giảm số lượng">−</button><span>${i.qty}</span><button data-q="${idx}" data-d="1" aria-label="Tăng số lượng">+</button></div>
             </div>
             <strong>${fmt(p.price * i.qty)}</strong>
           </div>`;
@@ -180,13 +192,20 @@ function toast(msg) {
 function openPanel(name) {
   closePanels();
   document.getElementById("overlay").classList.add("show");
-  if (name === "cart") document.getElementById("cartDrawer").classList.add("open");
-  if (name === "login") document.getElementById("loginModal").classList.add("open");
+  const panel = document.getElementById(name === "cart" ? "cartDrawer" : "loginModal");
+  panel.classList.add("open");
+  // chuyển focus vào panel để dùng được bằng bàn phím
+  setTimeout(() => (name === "login" ? panel.querySelector("input") : panel.querySelector("[data-close]")).focus(), 50);
 }
 function closePanels() {
-  ["overlay"].forEach((id) => document.getElementById(id).classList.remove("show"));
+  document.getElementById("overlay").classList.remove("show");
   document.getElementById("cartDrawer").classList.remove("open");
   document.getElementById("loginModal").classList.remove("open");
+}
+function toggleMenu(force) {
+  const nav = document.getElementById("mainNav");
+  const open = nav.classList.toggle("open", force);
+  document.getElementById("menuToggle").setAttribute("aria-expanded", open);
 }
 
 function productCard(p) {
@@ -243,15 +262,19 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     const open = e.target.closest("[data-open]");
     if (open) { e.preventDefault(); openPanel(open.dataset.open); return; }
+    // Link giữ chỗ (href="#") trong bản demo: không nhảy lên đầu trang
+    if (e.target.closest('a[href="#"]')) { e.preventDefault(); toast("Nội dung đang được cập nhật (demo)"); return; }
     if (e.target.closest("[data-close]") || e.target.id === "overlay" || e.target.id === "loginModal") { closePanels(); return; }
     const add = e.target.closest("[data-add]");
     if (add) { Cart.add(Number(add.dataset.add)); return; }
     const q = e.target.closest("[data-q]");
     if (q) { Cart.update(Number(q.dataset.q), Number(q.dataset.d)); return; }
-    if (e.target.closest("#menuToggle")) { document.getElementById("mainNav").classList.toggle("open"); return; }
-    if (e.target.closest(".main-nav a")) document.getElementById("mainNav").classList.remove("open");
+    if (e.target.closest("#menuToggle")) { toggleMenu(); return; }
+    if (e.target.closest(".main-nav a")) toggleMenu(false);
   });
-  document.addEventListener("keydown", (e) => e.key === "Escape" && closePanels());
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closePanels(); toggleMenu(false); }
+  });
 
   document.getElementById("loginForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -265,6 +288,11 @@ document.addEventListener("DOMContentLoaded", () => {
     toast("Đặt hàng thành công! Cảm ơn bạn ♥ (demo)");
   });
 
-  if (typeof initPage === "function") initPage();
-  initReveal();
+  try {
+    if (typeof initPage === "function") initPage();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    initReveal(); // luôn chạy để nội dung không bị ẩn khi có lỗi
+  }
 });

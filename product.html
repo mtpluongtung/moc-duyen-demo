@@ -35,12 +35,12 @@
 
       // Ảnh phụ: dùng ảnh khác cùng BST để làm gallery demo
       const gallery = [p.img, ...PRODUCTS.filter((x) => x.col === p.col && x.id !== p.id).slice(0, 3).map((x) => x.img)];
-      let size = "M", qty = 1;
+      let size = "M", qty = 1, color = p.colors[0];
 
       document.getElementById("pd").innerHTML = `
         <div class="pd-gallery">
           <div class="pd-main"><img id="mainImg" src="${IMG(p.img, 900, 1125)}" alt="${p.name}"></div>
-          <div class="pd-thumbs">${gallery.map((g, i) => `<button class="${i ? "" : "active"}" data-img="${g}"><img src="${IMG(g, 200, 200)}" alt=""></button>`).join("")}</div>
+          <div class="pd-thumbs">${gallery.map((g, i) => `<button class="${i ? "" : "active"}" data-img="${g}" aria-label="Xem ảnh ${i + 1}"><img src="${IMG(g, 200, 200)}" alt=""></button>`).join("")}</div>
         </div>
         <div class="pd-info">
           <p class="eyebrow">BST ${col.name}</p>
@@ -48,11 +48,11 @@
           <div class="price">${fmt(p.price)} ${p.oldPrice ? `<del>${fmt(p.oldPrice)}</del>` : ""}</div>
           <p class="desc">${col.desc} Chất liệu mềm mại, thoáng mát, đường may chắc chắn. Form chuẩn, dễ phối cùng nhiều phong cách khác nhau.</p>
           <p class="opt-label">Màu sắc</p>
-          <div class="swatches">${p.colors.map((c) => `<span style="background:${c}" title="${c}"></span>`).join("")}</div>
+          <div class="swatches" id="colors">${p.colors.map((c, i) => `<button class="${i ? "" : "active"}" style="background:${c}" data-color="${c}" aria-label="Màu ${i + 1}"></button>`).join("")}</div>
           <p class="opt-label">Kích cỡ</p>
           <div class="sizes" id="sizes">${["S", "M", "L", "XL"].map((s) => `<button class="${s === size ? "active" : ""}">${s}</button>`).join("")}</div>
           <div class="pd-buy">
-            <div class="qty"><button id="minus">−</button><span id="qty">1</span><button id="plus">+</button></div>
+            <div class="qty"><button id="minus" aria-label="Giảm số lượng">−</button><span id="qty">1</span><button id="plus" aria-label="Tăng số lượng">+</button></div>
             <button class="btn-pill btn-primary" id="addBtn">Thêm vào giỏ</button>
             ${p.tryon ? `<a class="btn-pill btn-outline" href="thu-do.html?id=${p.id}">✨ Thử đồ AI</a>` : ""}
           </div>
@@ -74,10 +74,16 @@
         size = e.target.textContent;
         document.querySelectorAll("#sizes button").forEach((x) => x.classList.toggle("active", x === e.target));
       });
+      document.getElementById("colors").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-color]");
+        if (!b) return;
+        color = b.dataset.color;
+        document.querySelectorAll("#colors button").forEach((x) => x.classList.toggle("active", x === b));
+      });
       const qtyEl = document.getElementById("qty");
       document.getElementById("minus").onclick = () => (qtyEl.textContent = qty = Math.max(1, qty - 1));
       document.getElementById("plus").onclick = () => (qtyEl.textContent = ++qty);
-      document.getElementById("addBtn").onclick = () => Cart.add(p.id, qty, size);
+      document.getElementById("addBtn").onclick = () => Cart.add(p.id, qty, size, color);
 
       const related = PRODUCTS.filter((x) => x.id !== p.id && (x.col === p.col || x.cat === p.cat)).slice(0, 4);
       document.getElementById("related").innerHTML = related.map(productCard).join("");
