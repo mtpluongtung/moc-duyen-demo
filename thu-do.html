@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thử đồ AI – Mộc Duyên</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Dancing+Script:wght@700&display=swap&subset=vietnamese" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="tryon">
+
+  <div class="container page-head">
+    <div class="breadcrumb"><a href="index.html">Trang chủ</a> / Thử đồ AI</div>
+    <h1 class="page-title">Phòng thử đồ AI</h1>
+    <p class="muted">Chọn ảnh, chọn trang phục và xem trước outfit của bạn. Kéo trang phục để căn chỉnh vị trí.</p>
+  </div>
+
+  <div class="container">
+    <div class="steps">
+      <div class="step" id="step1"><span class="step-num">1</span><div><h4>Chọn ảnh</h4><p>Tải ảnh của bạn hoặc chọn người mẫu</p></div></div>
+      <div class="step" id="step2"><span class="step-num">2</span><div><h4>Chọn trang phục</h4><p>Món đồ bạn muốn thử</p></div></div>
+      <div class="step" id="step3"><span class="step-num">3</span><div><h4>Thử đồ</h4><p>AI phối đồ & gợi ý size</p></div></div>
+    </div>
+
+    <div class="tryon-grid">
+      <!-- Ảnh người -->
+      <div class="panel">
+        <h3>1. Ảnh của bạn</h3>
+        <label class="upload" id="upload">
+          <input type="file" accept="image/*" id="fileInput">
+          <span style="font-size:1.8rem">📷</span>
+          <span><strong>Tải ảnh lên</strong> hoặc kéo thả vào đây</span>
+          <span class="small">Ảnh toàn thân, đứng thẳng cho kết quả tốt nhất</span>
+        </label>
+        <p class="muted small" style="margin-top:14px">Hoặc chọn người mẫu:</p>
+        <div class="model-list" id="modelList"></div>
+
+        <div class="size-tip">
+          <b>Gợi ý size</b>
+          <div class="size-inputs">
+            <input type="number" id="height" placeholder="Cao (cm)" min="120" max="210">
+            <input type="number" id="weight" placeholder="Nặng (kg)" min="30" max="150">
+          </div>
+          <p style="margin-top:10px" id="sizeResult" class="muted small">Nhập chiều cao & cân nặng để AI gợi ý size.</p>
+        </div>
+      </div>
+
+      <!-- Sân khấu -->
+      <div class="stage-wrap">
+        <div class="stage" id="stage">
+          <div class="placeholder" id="placeholder"><div><div style="font-size:3rem">👗</div><p>Chọn ảnh và trang phục<br>để bắt đầu thử đồ</p></div></div>
+          <div class="scan" id="scan"><div><b>AI đang phối đồ…</b><div class="progress"><i id="progress"></i></div></div></div>
+        </div>
+        <div class="hero-cta" style="margin-top:16px">
+          <button class="btn-pill btn-primary" id="tryBtn">✨ Thử đồ ngay</button>
+          <button class="btn-pill btn-outline" id="saveBtn">Lưu ảnh</button>
+          <button class="btn-pill btn-outline" id="resetBtn">Đặt lại</button>
+        </div>
+      </div>
+
+      <!-- Trang phục -->
+      <div class="panel">
+        <h3>2. Chọn trang phục</h3>
+        <div class="garment-list" id="garmentList"></div>
+
+        <div class="controls">
+          <label>Kích thước <input type="range" id="scale" min="20" max="90" value="46"></label>
+          <label>Độ trong suốt <input type="range" id="opacity" min="30" max="100" value="100"></label>
+          <label class="switch">Làm mềm viền <input type="checkbox" id="soft" checked></label>
+          <label class="switch">Hòa trộn nền trắng <input type="checkbox" id="blend"></label>
+        </div>
+
+        <div class="result-card" id="resultCard" hidden>
+          <img id="resImg" src="" alt="">
+          <div>
+            <h4 id="resName"></h4>
+            <div class="price" id="resPrice"></div>
+            <button class="btn-pill btn-primary btn-sm" id="resAdd" style="margin-top:6px">Thêm vào giỏ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    function initPage() {
+      const stage = document.getElementById("stage");
+      const scan = document.getElementById("scan");
+      const state = { person: null, garment: null, tried: false };
+      let garmentEl = null;
+
+      const tryable = PRODUCTS.filter((p) => p.tryon);
+      document.getElementById("modelList").innerHTML = MODELS.map((m, i) =>
+        `<button data-model="${i}" title="${m.name}"><img src="${IMG(m.img, 200, 266)}" alt="${m.name}"></button>`).join("");
+      document.getElementById("garmentList").innerHTML = tryable.map((p) =>
+        `<button data-g="${p.id}" title="${p.name}"><img src="${IMG(p.img, 200, 266)}" alt="${p.name}"></button>`).join("");
+
+      function updateSteps() {
+        document.getElementById("step1").classList.toggle("done", !!state.person);
+        document.getElementById("step2").classList.toggle("done", !!state.garment);
+        document.getElementById("step3").classList.toggle("done", state.tried);
+      }
+
+      function setPerson(src) {
+        state.person = src;
+        document.getElementById("placeholder").hidden = true;
+        let img = stage.querySelector("img.person");
+        if (!img) {
+          img = document.createElement("img");
+          img.className = "person";
+          img.crossOrigin = "anonymous";
+          stage.prepend(img);
+        }
+        img.src = src;
+        updateSteps();
+        if (state.tried) runTryOn();
+      }
+
+      function setGarment(id) {
+        state.garment = findProduct(id);
+        document.querySelectorAll("[data-g]").forEach((b) => b.classList.toggle("active", +b.dataset.g === +id));
+        updateSteps();
+        if (state.tried) runTryOn();
+      }
+
+      // Chọn người mẫu / trang phục
+      document.getElementById("modelList").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-model]");
+        if (!b) return;
+        document.querySelectorAll("[data-model]").forEach((x) => x.classList.toggle("active", x === b));
+        setPerson(IMG(MODELS[b.dataset.model].img, 900, 1200));
+      });
+      document.getElementById("garmentList").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-g]");
+        if (b) setGarment(b.dataset.g);
+      });
+
+      // Upload ảnh
+      const upload = document.getElementById("upload");
+      const readFile = (file) => {
+        if (!file || !file.type.startsWith("image/")) return toast("Vui lòng chọn file ảnh");
+        const r = new FileReader();
+        r.onload = () => {
+          document.querySelectorAll("[data-model]").forEach((x) => x.classList.remove("active"));
+          setPerson(r.result);
+          toast("Đã tải ảnh lên");
+        };
+        r.readAsDataURL(file);
+      };
+      document.getElementById("fileInput").addEventListener("change", (e) => readFile(e.target.files[0]));
+      ["dragenter", "dragover"].forEach((ev) => upload.addEventListener(ev, (e) => { e.preventDefault(); upload.classList.add("drag"); }));
+      ["dragleave", "drop"].forEach((ev) => upload.addEventListener(ev, (e) => { e.preventDefault(); upload.classList.remove("drag"); }));
+      upload.addEventListener("drop", (e) => readFile(e.dataTransfer.files[0]));
+
+      // Chạy "AI" thử đồ (mô phỏng)
+      function runTryOn() {
+        if (!state.person) return toast("Hãy chọn ảnh hoặc người mẫu trước");
+        if (!state.garment) return toast("Hãy chọn một trang phục");
+        scan.classList.add("show");
+        const bar = document.getElementById("progress");
+        let p = 0;
+        const timer = setInterval(() => {
+          p += 4 + Math.random() * 10;
+          bar.style.width = Math.min(p, 100) + "%";
+          if (p >= 100) {
+            clearInterval(timer);
+            setTimeout(() => { scan.classList.remove("show"); bar.style.width = 0; placeGarment(); }, 200);
+          }
+        }, 90);
+      }
+
+      function placeGarment() {
+        const g = state.garment;
+        if (!garmentEl) {
+          garmentEl = document.createElement("div");
+          garmentEl.className = "garment";
+          garmentEl.innerHTML = `<img crossorigin="anonymous" alt="">`;
+          stage.append(garmentEl);
+          enableDrag(garmentEl);
+        }
+        garmentEl.querySelector("img").src = IMG(g.img, 600, 750);
+        applyControls();
+        state.tried = true;
+        updateSteps();
+        document.getElementById("resultCard").hidden = false;
+        document.getElementById("resImg").src = IMG(g.img, 160, 210);
+        document.getElementById("resName").textContent = g.name;
+        document.getElementById("resPrice").textContent = fmt(g.price);
+        toast("Hoàn tất! Kéo trang phục để căn chỉnh");
+      }
+
+      function applyControls() {
+        if (!garmentEl) return;
+        garmentEl.style.width = document.getElementById("scale").value + "%";
+        garmentEl.style.opacity = document.getElementById("opacity").value / 100;
+        stage.classList.toggle("blend", document.getElementById("blend").checked);
+        stage.classList.toggle("soft", document.getElementById("soft").checked);
+      }
+      ["scale", "opacity", "blend", "soft"].forEach((id) => document.getElementById(id).addEventListener("input", applyControls));
+
+      // Kéo thả trang phục (vị trí theo %)
+      function enableDrag(el) {
+        let sx, sy, ox, oy;
+        el.addEventListener("pointerdown", (e) => {
+          el.setPointerCapture(e.pointerId);
+          el.classList.add("dragging");
+          sx = e.clientX; sy = e.clientY;
+          ox = parseFloat(el.style.left) || 50; oy = parseFloat(el.style.top) || 45;
+        });
+        el.addEventListener("pointermove", (e) => {
+          if (!el.classList.contains("dragging")) return;
+          const r = stage.getBoundingClientRect();
+          el.style.left = Math.max(0, Math.min(100, ox + ((e.clientX - sx) / r.width) * 100)) + "%";
+          el.style.top = Math.max(0, Math.min(100, oy + ((e.clientY - sy) / r.height) * 100)) + "%";
+        });
+        el.addEventListener("pointerup", () => el.classList.remove("dragging"));
+      }
+
+      document.getElementById("tryBtn").addEventListener("click", runTryOn);
+      document.getElementById("resAdd").addEventListener("click", () => Cart.add(state.garment.id));
+      document.getElementById("resetBtn").addEventListener("click", () => {
+        if (garmentEl) { garmentEl.remove(); garmentEl = null; }
+        state.tried = false;
+        document.getElementById("resultCard").hidden = true;
+        document.getElementById("scale").value = 46;
+        document.getElementById("opacity").value = 100;
+        document.getElementById("blend").checked = false;
+        document.getElementById("soft").checked = true;
+        stage.classList.remove("blend");
+        updateSteps();
+      });
+
+      // Lưu ảnh kết quả ra PNG
+      document.getElementById("saveBtn").addEventListener("click", () => {
+        const person = stage.querySelector("img.person");
+        if (!person || !garmentEl) return toast("Hãy thử đồ trước khi lưu ảnh");
+        const W = 900, H = 1200, c = document.createElement("canvas");
+        c.width = W; c.height = H;
+        const ctx = c.getContext("2d");
+        // vẽ ảnh người theo kiểu object-fit: cover
+        const s = Math.max(W / person.naturalWidth, H / person.naturalHeight);
+        const pw = person.naturalWidth * s, ph = person.naturalHeight * s;
+        ctx.drawImage(person, (W - pw) / 2, (H - ph) / 2, pw, ph);
+        const gImg = garmentEl.querySelector("img");
+        const gw = (parseFloat(garmentEl.style.width) / 100) * W;
+        const gh = gw * (gImg.naturalHeight / gImg.naturalWidth);
+        const gx = ((parseFloat(garmentEl.style.left) || 50) / 100) * W - gw / 2;
+        const gy = ((parseFloat(garmentEl.style.top) || 45) / 100) * H - gh / 2;
+        // vẽ trang phục ra canvas phụ, làm mềm viền nếu bật
+        const g = document.createElement("canvas");
+        g.width = gw; g.height = gh;
+        const gctx = g.getContext("2d");
+        gctx.drawImage(gImg, 0, 0, gw, gh);
+        if (stage.classList.contains("soft")) {
+          gctx.globalCompositeOperation = "destination-in";
+          gctx.setTransform(1, 0, 0, gh / gw, 0, 0);
+          const grad = gctx.createRadialGradient(gw / 2, gw / 2, 0, gw / 2, gw / 2, gw / 2);
+          grad.addColorStop(0.6, "#000");
+          grad.addColorStop(1, "transparent");
+          gctx.fillStyle = grad;
+          gctx.fillRect(0, 0, gw, gw);
+        }
+        ctx.globalAlpha = parseFloat(garmentEl.style.opacity) || 1;
+        if (stage.classList.contains("blend")) ctx.globalCompositeOperation = "multiply";
+        ctx.drawImage(g, gx, gy, gw, gh);
+        try {
+          const a = document.createElement("a");
+          a.download = "moc-duyen-thu-do.png";
+          a.href = c.toDataURL("image/png");
+          a.click();
+        } catch {
+          toast("Trình duyệt chặn lưu ảnh từ nguồn ngoài");
+        }
+      });
+
+      // Gợi ý size theo BMI đơn giản
+      const sizeResult = document.getElementById("sizeResult");
+      function suggestSize() {
+        const h = +document.getElementById("height").value, w = +document.getElementById("weight").value;
+        if (!h || !w) return (sizeResult.innerHTML = "Nhập chiều cao & cân nặng để AI gợi ý size.");
+        const bmi = w / (h / 100) ** 2;
+        let size = bmi < 18.5 ? "S" : bmi < 22 ? "M" : bmi < 25 ? "L" : "XL";
+        if (h > 178 && size !== "XL") size = { S: "M", M: "L", L: "XL" }[size];
+        sizeResult.innerHTML = `Size phù hợp với bạn: <strong>${size}</strong>`;
+      }
+      ["height", "weight"].forEach((id) => document.getElementById(id).addEventListener("input", suggestSize));
+
+      // Mở sẵn từ trang sản phẩm: thu-do.html?id=…
+      const preset = findProduct(new URLSearchParams(location.search).get("id"));
+      if (preset && preset.tryon) setGarment(preset.id);
+      document.querySelector("[data-model='0']").click();
+    }
+  </script>
+</body>
+</html>

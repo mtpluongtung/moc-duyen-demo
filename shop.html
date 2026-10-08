@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shop – Mộc Duyên</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Dancing+Script:wght@700&display=swap&subset=vietnamese" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="shop">
+
+  <div class="container page-head">
+    <div class="breadcrumb"><a href="index.html">Trang chủ</a> / Shop</div>
+    <h1 class="page-title" id="pageTitle">Tất cả sản phẩm</h1>
+    <p class="muted small" id="resultCount"></p>
+
+    <div class="toolbar">
+      <div class="chips" id="chips"></div>
+      <div class="tools">
+        <input type="search" class="search" id="search" placeholder="Tìm sản phẩm…">
+        <select class="select" id="sort">
+          <option value="default">Mặc định</option>
+          <option value="price-asc">Giá tăng dần</option>
+          <option value="price-desc">Giá giảm dần</option>
+          <option value="name">Tên A → Z</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="product-grid" id="productGrid"></div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    function initPage() {
+      const params = new URLSearchParams(location.search);
+      const filters = [
+        { key: "all", label: "Tất cả" },
+        ...CATEGORIES.map((c) => ({ key: "cat:" + c.id, label: c.name })),
+        ...COLLECTIONS.map((c) => ({ key: "col:" + c.id, label: c.name })),
+      ];
+      let active = params.get("col") ? "col:" + params.get("col") : params.get("cat") ? "cat:" + params.get("cat") : "all";
+
+      const chips = document.getElementById("chips");
+      const grid = document.getElementById("productGrid");
+      const search = document.getElementById("search");
+      const sort = document.getElementById("sort");
+
+      function render() {
+        chips.innerHTML = filters.map((f) => `<button class="chip ${f.key === active ? "active" : ""}" data-f="${f.key}">${f.label}</button>`).join("");
+        const [type, val] = active.split(":");
+        const q = search.value.trim().toLowerCase();
+        let list = PRODUCTS.filter((p) =>
+          (type === "all" || p[type] === val) && (!q || p.name.toLowerCase().includes(q)));
+        if (sort.value === "price-asc") list.sort((a, b) => a.price - b.price);
+        if (sort.value === "price-desc") list.sort((a, b) => b.price - a.price);
+        if (sort.value === "name") list.sort((a, b) => a.name.localeCompare(b.name, "vi"));
+
+        const f = filters.find((x) => x.key === active);
+        document.getElementById("pageTitle").textContent = type === "col" ? "BST " + f.label : type === "cat" ? f.label : "Tất cả sản phẩm";
+        document.getElementById("resultCount").textContent = `${list.length} sản phẩm`;
+        grid.innerHTML = list.length ? list.map(productCard).join("") : `<p class="empty">Không tìm thấy sản phẩm phù hợp.</p>`;
+        initReveal();
+      }
+
+      chips.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-f]");
+        if (!b) return;
+        active = b.dataset.f;
+        render();
+      });
+      search.addEventListener("input", render);
+      sort.addEventListener("change", render);
+      render();
+    }
+  </script>
+</body>
+</html>

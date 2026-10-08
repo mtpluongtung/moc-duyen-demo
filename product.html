@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sản phẩm – Mộc Duyên</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Dancing+Script:wght@700&display=swap&subset=vietnamese" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="shop">
+
+  <div class="container page-head">
+    <div class="breadcrumb" id="crumb"></div>
+    <div class="pd-grid" id="pd"></div>
+  </div>
+
+  <section>
+    <div class="container">
+      <div class="section-head"><h2 class="section-title">Có thể bạn sẽ thích</h2></div>
+      <div class="product-grid" id="related"></div>
+    </div>
+  </section>
+
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    function initPage() {
+      const p = findProduct(new URLSearchParams(location.search).get("id")) || PRODUCTS[0];
+      const col = findCollection(p.col);
+      document.title = `${p.name} – Mộc Duyên`;
+      document.getElementById("crumb").innerHTML =
+        `<a href="index.html">Trang chủ</a> / <a href="shop.html">Shop</a> / <a href="shop.html?col=${col.id}">${col.name}</a> / ${p.name}`;
+
+      // Ảnh phụ: dùng ảnh khác cùng BST để làm gallery demo
+      const gallery = [p.img, ...PRODUCTS.filter((x) => x.col === p.col && x.id !== p.id).slice(0, 3).map((x) => x.img)];
+      let size = "M", qty = 1;
+
+      document.getElementById("pd").innerHTML = `
+        <div class="pd-gallery">
+          <div class="pd-main"><img id="mainImg" src="${IMG(p.img, 900, 1125)}" alt="${p.name}"></div>
+          <div class="pd-thumbs">${gallery.map((g, i) => `<button class="${i ? "" : "active"}" data-img="${g}"><img src="${IMG(g, 200, 200)}" alt=""></button>`).join("")}</div>
+        </div>
+        <div class="pd-info">
+          <p class="eyebrow">BST ${col.name}</p>
+          <h1>${p.name}</h1>
+          <div class="price">${fmt(p.price)} ${p.oldPrice ? `<del>${fmt(p.oldPrice)}</del>` : ""}</div>
+          <p class="desc">${col.desc} Chất liệu mềm mại, thoáng mát, đường may chắc chắn. Form chuẩn, dễ phối cùng nhiều phong cách khác nhau.</p>
+          <p class="opt-label">Màu sắc</p>
+          <div class="swatches">${p.colors.map((c) => `<span style="background:${c}" title="${c}"></span>`).join("")}</div>
+          <p class="opt-label">Kích cỡ</p>
+          <div class="sizes" id="sizes">${["S", "M", "L", "XL"].map((s) => `<button class="${s === size ? "active" : ""}">${s}</button>`).join("")}</div>
+          <div class="pd-buy">
+            <div class="qty"><button id="minus">−</button><span id="qty">1</span><button id="plus">+</button></div>
+            <button class="btn-pill btn-primary" id="addBtn">Thêm vào giỏ</button>
+            ${p.tryon ? `<a class="btn-pill btn-outline" href="thu-do.html?id=${p.id}">✨ Thử đồ AI</a>` : ""}
+          </div>
+          <div class="perks">
+            <div><b>✓</b> Freeship cho đơn từ 500.000đ</div>
+            <div><b>✓</b> Đổi trả miễn phí trong 7 ngày</div>
+            <div><b>✓</b> Thanh toán khi nhận hàng (COD)</div>
+          </div>
+        </div>`;
+
+      document.querySelector(".pd-thumbs").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-img]");
+        if (!b) return;
+        document.getElementById("mainImg").src = IMG(b.dataset.img, 900, 1125);
+        document.querySelectorAll(".pd-thumbs button").forEach((x) => x.classList.toggle("active", x === b));
+      });
+      document.getElementById("sizes").addEventListener("click", (e) => {
+        if (e.target.tagName !== "BUTTON") return;
+        size = e.target.textContent;
+        document.querySelectorAll("#sizes button").forEach((x) => x.classList.toggle("active", x === e.target));
+      });
+      const qtyEl = document.getElementById("qty");
+      document.getElementById("minus").onclick = () => (qtyEl.textContent = qty = Math.max(1, qty - 1));
+      document.getElementById("plus").onclick = () => (qtyEl.textContent = ++qty);
+      document.getElementById("addBtn").onclick = () => Cart.add(p.id, qty, size);
+
+      const related = PRODUCTS.filter((x) => x.id !== p.id && (x.col === p.col || x.cat === p.cat)).slice(0, 4);
+      document.getElementById("related").innerHTML = related.map(productCard).join("");
+    }
+  </script>
+</body>
+</html>
